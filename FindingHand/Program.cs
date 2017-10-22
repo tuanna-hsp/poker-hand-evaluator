@@ -11,7 +11,8 @@ namespace FindingHand
         HEART = 0,
         DIAMOND = 1,
         CLUB = 2,
-        SPADE = 3
+        SPADE = 3,
+        NONE = 4,
     }
 
     enum Rank
@@ -94,13 +95,117 @@ namespace FindingHand
             HandType type = evaluateHand(royalFlushSet);
             Console.WriteLine("First hand type: " + type.ToString());
 
+            Card[] fullHouseSet = {
+                new Card(Suit.CLUB, Rank.ACE),
+                new Card(Suit.HEART, Rank.ACE),
+                new Card(Suit.CLUB, Rank.QUEEN),
+                new Card(Suit.DIAMOND, Rank.ACE),
+                new Card(Suit.CLUB, Rank.TEN),
+                new Card(Suit.DIAMOND, Rank.NINE),
+                new Card(Suit.HEART, Rank.QUEEN),
+            };
+
+            type = evaluateHand(fullHouseSet);
+            Console.WriteLine("Second hand type: " + type.ToString());
+
             Console.ReadLine();
         }
 
         static HandType evaluateHand(Card[] cards)
         {
             Array.Sort(cards);
-            printCards(cards);
+
+            int[] rankCount = new int[13];
+            int[] suitCount = new int[4];
+
+            foreach (Card card in cards)
+            {
+                rankCount[(int)card.rank]++;
+                suitCount[(int)card.suit]++;
+            }
+
+            int pairCount = 0;
+            int threeCount = 0;
+            int fourCount = 0;
+            int straightStart = 0, straightEnd = 0;
+     
+            for (int i = 0; i < rankCount.Length; i++)
+            {
+                if (rankCount[i] == 2) { pairCount++; }
+                if (rankCount[i] == 3) { threeCount++; }
+                if (rankCount[i] == 4) { fourCount++; }
+
+                if (i > 0 && rankCount[i] > 0 && rankCount[i-1] > 0)
+                {
+                    straightEnd = i;
+                }
+                else
+                {
+                    straightStart = straightEnd = i;
+                }
+            }
+
+            bool hasStraight = (straightEnd - straightStart) >= 4;
+
+            Suit flushType = Suit.NONE;
+            for (int i = 0; i < suitCount.Length; i++)
+            {
+                if (suitCount[i] >= 4)
+                {
+                    flushType = (Suit)i;
+                    break;
+                }
+            }
+
+            if (hasStraight && flushType != Suit.NONE)
+            {
+                // Check if there is a straight flush by checking the suit of cards in straight
+                // Acknowledge the fact that a hand has total of 5 cards
+                for (int i = 0; i < (cards.Length - 4); i++)
+                {
+                    bool isStraightFlush = true;
+
+                    for (int j = i; j <= (i + 4); j++)
+                    {
+                        bool differentSuit = cards[j].suit != flushType;
+                        bool notContinuous = ((j > i) && ((int)cards[j].rank != ((int)cards[j - 1].rank + 1)));
+                        if (differentSuit || notContinuous)
+                        {
+                            isStraightFlush = false;
+                            break;
+                        }
+                    }
+
+                    if (isStraightFlush)
+                    {
+                        if (cards[i].rank == Rank.TEN)
+                            return HandType.ROYAL_FLUSH;
+                        else
+                            return HandType.STRAIGHT_FLUSH;
+                    }
+                }
+            }
+
+            if (fourCount > 0)
+                return HandType.FOUR_OF_A_KIND;
+
+            if (pairCount > 0 && threeCount > 0)
+                return HandType.FULL_HOUSE;
+
+            if (flushType != Suit.NONE)
+                return HandType.FLUSH;
+
+            if (hasStraight)
+                return HandType.STRAIGHT;
+
+            if (threeCount > 0)
+                return HandType.THREE_OF_A_KIND;
+
+            if (pairCount > 1)
+                return HandType.TWO_PAIR;
+
+            if (pairCount == 1)
+                return HandType.ONE_PAIR;
 
             return HandType.HIGH_CARD;
         }
